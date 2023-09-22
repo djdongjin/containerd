@@ -22,7 +22,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pelletier/go-toml"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/sirupsen/logrus"
 )
 

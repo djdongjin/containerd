@@ -55,7 +55,7 @@ require (
 	github.com/moby/sys/user v0.3.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
+	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
