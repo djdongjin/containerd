@@ -82,7 +82,7 @@ func (l *local) Get(ctx context.Context, req *api.GetContainerRequest, _ ...grpc
 		if err != nil {
 			return err
 		}
-		containerpb := containerToProto(&container)
+		containerpb := containers.ContainerToProto(&container)
 		resp.Container = containerpb
 
 		return nil
@@ -92,11 +92,11 @@ func (l *local) Get(ctx context.Context, req *api.GetContainerRequest, _ ...grpc
 func (l *local) List(ctx context.Context, req *api.ListContainersRequest, _ ...grpc.CallOption) (*api.ListContainersResponse, error) {
 	var resp api.ListContainersResponse
 	return &resp, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context) error {
-		containers, err := l.Store.List(ctx, req.Filters...)
+		cs, err := l.Store.List(ctx, req.Filters...)
 		if err != nil {
 			return err
 		}
-		resp.Containers = containersToProto(containers)
+		resp.Containers = containers.ContainersToProto(cs)
 		return nil
 	}))
 }
@@ -106,11 +106,11 @@ func (l *local) ListStream(ctx context.Context, req *api.ListContainersRequest, 
 		ctx: ctx,
 	}
 	return stream, errdefs.ToGRPC(l.withStoreView(ctx, func(ctx context.Context) error {
-		containers, err := l.Store.List(ctx, req.Filters...)
+		cs, err := l.Store.List(ctx, req.Filters...)
 		if err != nil {
 			return err
 		}
-		stream.containers = containersToProto(containers)
+		stream.containers = containers.ContainersToProto(cs)
 		return nil
 	}))
 }
@@ -119,14 +119,14 @@ func (l *local) Create(ctx context.Context, req *api.CreateContainerRequest, _ .
 	var resp api.CreateContainerResponse
 
 	if err := l.withStoreUpdate(ctx, func(ctx context.Context) error {
-		container := containerFromProto(req.Container)
+		container := containers.ContainerFromProto(req.Container)
 
 		created, err := l.Store.Create(ctx, container)
 		if err != nil {
 			return err
 		}
 
-		resp.Container = containerToProto(&created)
+		resp.Container = containers.ContainerToProto(&created)
 
 		return nil
 	}); err != nil {
@@ -152,7 +152,7 @@ func (l *local) Update(ctx context.Context, req *api.UpdateContainerRequest, _ .
 	}
 	var (
 		resp      api.UpdateContainerResponse
-		container = containerFromProto(req.Container)
+		container = containers.ContainerFromProto(req.Container)
 	)
 
 	if err := l.withStoreUpdate(ctx, func(ctx context.Context) error {
@@ -166,7 +166,7 @@ func (l *local) Update(ctx context.Context, req *api.UpdateContainerRequest, _ .
 			return err
 		}
 
-		resp.Container = containerToProto(&updated)
+		resp.Container = containers.ContainerToProto(&updated)
 		return nil
 	}); err != nil {
 		return &resp, errdefs.ToGRPC(err)

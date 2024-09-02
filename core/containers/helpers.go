@@ -18,24 +18,34 @@ package containers
 
 import (
 	api "github.com/containerd/containerd/api/services/containers/v1"
-	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/protobuf"
 	"github.com/containerd/containerd/v2/pkg/protobuf/types"
 	"github.com/containerd/typeurl/v2"
 )
 
-func containersToProto(containers []containers.Container) []*api.Container {
+func ContainersToProto(containers []Container) []*api.Container {
 	var containerspb []*api.Container
 
 	for _, image := range containers {
 		image := image
-		containerspb = append(containerspb, containerToProto(&image))
+		containerspb = append(containerspb, ContainerToProto(&image))
 	}
 
 	return containerspb
 }
 
-func containerToProto(container *containers.Container) *api.Container {
+func ContainersFromProto(containerspb []*api.Container) []Container {
+	var containers []Container
+
+	for _, container := range containerspb {
+		container := container
+		containers = append(containers, ContainerFromProto(container))
+	}
+
+	return containers
+}
+
+func ContainerToProto(container *Container) *api.Container {
 	extensions := make(map[string]*types.Any)
 	for k, v := range container.Extensions {
 		extensions[k] = typeurl.MarshalProto(v)
@@ -58,10 +68,10 @@ func containerToProto(container *containers.Container) *api.Container {
 	}
 }
 
-func containerFromProto(containerpb *api.Container) containers.Container {
-	var runtime containers.RuntimeInfo
+func ContainerFromProto(containerpb *api.Container) Container {
+	var runtime RuntimeInfo
 	if containerpb.Runtime != nil {
-		runtime = containers.RuntimeInfo{
+		runtime = RuntimeInfo{
 			Name:    containerpb.Runtime.Name,
 			Options: containerpb.Runtime.Options,
 		}
@@ -71,7 +81,7 @@ func containerFromProto(containerpb *api.Container) containers.Container {
 		v := v
 		extensions[k] = v
 	}
-	return containers.Container{
+	return Container{
 		ID:          containerpb.ID,
 		Labels:      containerpb.Labels,
 		Image:       containerpb.Image,
@@ -81,5 +91,7 @@ func containerFromProto(containerpb *api.Container) containers.Container {
 		SnapshotKey: containerpb.SnapshotKey,
 		Extensions:  extensions,
 		SandboxID:   containerpb.Sandbox,
+		CreatedAt:   protobuf.FromTimestamp(containerpb.CreatedAt),
+		UpdatedAt:   protobuf.FromTimestamp(containerpb.UpdatedAt),
 	}
 }

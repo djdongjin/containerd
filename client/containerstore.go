@@ -23,10 +23,8 @@ import (
 
 	containersapi "github.com/containerd/containerd/api/services/containers/v1"
 	"github.com/containerd/containerd/v2/core/containers"
-	"github.com/containerd/containerd/v2/pkg/protobuf"
 	ptypes "github.com/containerd/containerd/v2/pkg/protobuf/types"
 	"github.com/containerd/errdefs"
-	"github.com/containerd/typeurl/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -52,7 +50,7 @@ func (r *remoteContainers) Get(ctx context.Context, id string) (containers.Conta
 		return containers.Container{}, errdefs.FromGRPC(err)
 	}
 
-	return containerFromProto(resp.Container), nil
+	return containers.ContainerFromProto(resp.Container), nil
 }
 
 func (r *remoteContainers) List(ctx context.Context, filters ...string) ([]containers.Container, error) {
@@ -73,7 +71,7 @@ func (r *remoteContainers) list(ctx context.Context, filters ...string) ([]conta
 	if err != nil {
 		return nil, errdefs.FromGRPC(err)
 	}
-	return containersFromProto(resp.Containers), nil
+	return containers.ContainersFromProto(resp.Containers), nil
 }
 
 var errStreamNotAvailable = errors.New("streaming api not available")
@@ -85,12 +83,12 @@ func (r *remoteContainers) stream(ctx context.Context, filters ...string) ([]con
 	if err != nil {
 		return nil, errdefs.FromGRPC(err)
 	}
-	var containers []containers.Container
+	var cs []containers.Container
 	for {
 		c, err := session.Recv()
 		if err != nil {
 			if err == io.EOF {
-				return containers, nil
+				return cs, nil
 			}
 			if s, ok := status.FromError(err); ok {
 				if s.Code() == codes.Unimplemented {
@@ -101,22 +99,22 @@ func (r *remoteContainers) stream(ctx context.Context, filters ...string) ([]con
 		}
 		select {
 		case <-ctx.Done():
-			return containers, ctx.Err()
+			return cs, ctx.Err()
 		default:
-			containers = append(containers, containerFromProto(c.Container))
+			cs = append(cs, containers.ContainerFromProto(c.Container))
 		}
 	}
 }
 
 func (r *remoteContainers) Create(ctx context.Context, container containers.Container) (containers.Container, error) {
 	created, err := r.client.Create(ctx, &containersapi.CreateContainerRequest{
-		Container: containerToProto(&container),
+		Container: containers.ContainerToProto(&container),
 	})
 	if err != nil {
 		return containers.Container{}, errdefs.FromGRPC(err)
 	}
 
-	return containerFromProto(created.Container), nil
+	return containers.ContainerFromProto(created.Container), nil
 
 }
 
@@ -129,14 +127,14 @@ func (r *remoteContainers) Update(ctx context.Context, container containers.Cont
 	}
 
 	updated, err := r.client.Update(ctx, &containersapi.UpdateContainerRequest{
-		Container:  containerToProto(&container),
+		Container:  containers.ContainerToProto(&container),
 		UpdateMask: updateMask,
 	})
 	if err != nil {
 		return containers.Container{}, errdefs.FromGRPC(err)
 	}
 
-	return containerFromProto(updated.Container), nil
+	return containers.ContainerFromProto(updated.Container), nil
 
 }
 
@@ -147,64 +145,4 @@ func (r *remoteContainers) Delete(ctx context.Context, id string) error {
 
 	return errdefs.FromGRPC(err)
 
-}
-
-func containerToProto(container *containers.Container) *containersapi.Container {
-	extensions := make(map[string]*ptypes.Any)
-	for k, v := range container.Extensions {
-		extensions[k] = typeurl.MarshalProto(v)
-	}
-	return &containersapi.Container{
-		ID:     container.ID,
-		Labels: container.Labels,
-		Image:  container.Image,
-		Runtime: &containersapi.Container_Runtime{
-			Name:    container.Runtime.Name,
-			Options: typeurl.MarshalProto(container.Runtime.Options),
-		},
-		Spec:        typeurl.MarshalProto(container.Spec),
-		Snapshotter: container.Snapshotter,
-		SnapshotKey: container.SnapshotKey,
-		Extensions:  extensions,
-		Sandbox:     container.SandboxID,
-	}
-}
-
-func containerFromProto(containerpb *containersapi.Container) containers.Container {
-	var runtime containers.RuntimeInfo
-	if containerpb.Runtime != nil {
-		runtime = containers.RuntimeInfo{
-			Name:    containerpb.Runtime.Name,
-			Options: containerpb.Runtime.Options,
-		}
-	}
-	extensions := make(map[string]typeurl.Any)
-	for k, v := range containerpb.Extensions {
-		v := v
-		extensions[k] = v
-	}
-	return containers.Container{
-		ID:          containerpb.ID,
-		Labels:      containerpb.Labels,
-		Image:       containerpb.Image,
-		Runtime:     runtime,
-		Spec:        containerpb.Spec,
-		Snapshotter: containerpb.Snapshotter,
-		SnapshotKey: containerpb.SnapshotKey,
-		CreatedAt:   protobuf.FromTimestamp(containerpb.CreatedAt),
-		UpdatedAt:   protobuf.FromTimestamp(containerpb.UpdatedAt),
-		Extensions:  extensions,
-		SandboxID:   containerpb.Sandbox,
-	}
-}
-
-func containersFromProto(containerspb []*containersapi.Container) []containers.Container {
-	var containers []containers.Container
-
-	for _, container := range containerspb {
-		container := container
-		containers = append(containers, containerFromProto(container))
-	}
-
-	return containers
 }
