@@ -92,7 +92,11 @@ ca = "/etc/path/default"
   skip_verify = true
 
 [host."http://mirror.registry"]
+	capabilities = ["pull", "resolve", "push"]
+
+[host."https://[0:0:0::0:0:0]:443"]
   capabilities = ["pull"]
+	client = "/etc/certs/client.pem"
 
 [host."https://test-1.registry"]
   capabilities = ["pull", "resolve", "push"]
@@ -145,6 +149,16 @@ ca = "/etc/path/default"
 			clientPairs: [][2]string{
 				{filepath.FromSlash("/etc/certs/client.cert"), filepath.FromSlash("/etc/certs/client.key")},
 				{filepath.FromSlash("/etc/certs/client.pem"), ""},
+			},
+		},
+		{
+			scheme:       "https",
+			host:         "[0:0:0::0:0:0]:443",
+			path:         "/v2",
+			capabilities: allCaps,
+			caCerts:      []string{filepath.FromSlash("/etc/certs/test-1-ca.pem"), filepath.FromSlash("/etc/certs/special.pem")},
+			clientPairs: [][2]string{
+				{filepath.FromSlash("/etc/certs/client.pem")},
 			},
 		},
 		{
